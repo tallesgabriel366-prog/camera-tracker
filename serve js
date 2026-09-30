@@ -1,0 +1,50 @@
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configurações
+app.use(cors());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(express.static('public'));
+
+// Cria a pasta de capturas se não existir
+const uploadDir = path.join(__dirname, 'captures');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
+
+// Rota que recebe a imagem
+app.post('/upload', (req, res) => {
+    const { image } = req.body;
+
+    if (!image) {
+        return res.status(400).send('Sem imagem.');
+    }
+
+    // Remove o prefixo Base64
+    const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Nome do arquivo com data e hora
+    const fileName = `foto_${Date.now()}.jpg`;
+    const filePath = path.join(uploadDir, fileName);
+
+    fs.writeFile(filePath, buffer, (err) => {
+        if (err) {
+            console.error("Erro ao salvar:", err);
+            return res.status(500).send('Erro interno.');
+        }
+        console.log(`[!] Nova captura recebida: ${fileName}`);
+        res.status(200).send('Captura salva.');
+    });
+});
+
+app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+    console.log(`As fotos aparecerão na pasta /captures`);
+});
